@@ -79,7 +79,7 @@ void Backprop_model(Grad<IN, L1, L2, OUT> &grad,
     copy(grad_temp.b3, upstream);
     cdot(d22, net.w3, upstream);
     
-    ReLu(d21, d22);
+    ReLu(d21, d22); //wrong layer, need to implement ReLu_backprop(din*u(in))
     outer(grad_temp.w2_t, Rs1, d21);
     copy(grad_temp.b2, d21);
     cdot(d12, net.w2_t, d21);

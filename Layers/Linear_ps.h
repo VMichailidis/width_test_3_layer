@@ -53,17 +53,6 @@ void Linear_ps<IN, OUT>::backward(){
 		}
 		*dout << acc;
 	}
-	// T dout_tmp[IN];
-	// cdot(dout_tmp, W.w, din_tmp);
-	// print_array(dout_tmp);
-	// copy(dout_tmp, din_tmp);
-	// for(int i = 0; i < IN; i++){
-	// 	dout_tmp[i] = 0;
-	// 	for(int j = 0; j < OUT; j++){
-	// 		 dout_tmp[i] += W.w[j][i] * din_tmp[j];	
-	// 	}
-	// }
-	// for(int i = 0; i < IN; i ++){*dout << dout_tmp[i];}
 	add(G, G, g_tmp);
 }
 

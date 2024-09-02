@@ -8,9 +8,6 @@
 typedef float T;
 typedef hls::stream<T> T_s;
 #define DEPTH 10
-template<int SIZE>
-using T_sa = hls::stream_of_blocks<T[SIZE], DEPTH>;
-typedef hls::stream_of_blocks<T, DEPTH> T_ss;
 using namespace std;
 // element wise addtion 
 template <int N> 
@@ -31,14 +28,12 @@ void cdot(T (&out)[N], T (&v)[N], T n);
 // copying 
 template<int N, int M>
 void copy(T (&m1)[N][M], const T (&m2)[N][M]);
-template<int B, int N, int M>
-void copy(T (&m1)[B][N][M], const T (&m2)[N][M]);
+// template<int B, int N, int M>
+// void copy(T (&m1)[B][N][M], const T (&m2)[N][M]);
 template<int N, int M>
 void copy(T (&m1)[N][M], const float (&m2)[N][M]);
 template<int N>
 void copy(T (&out)[N], const T (&in)[N]);
-template<int N>
-void copy(T (&out)[N], hls::read_lock<T[N]> &in);
 template<int N>
 void copy(T (&out)[N], const float (&in)[N]);
 
@@ -56,8 +51,6 @@ void mul(T (&out)[N][M], T num, T (&in)[N][M]);
 // outer product
 template <int N, int M>
 void outer(T (&m)[N][M], const T (&v1)[N], const T (&v2)[M]);
-template <int N, int M>
-void outer(T (&m)[N][M], hls::read_lock<T[N]> &v1, const T (&v2)[M]);
 
 
 //parallelize 
@@ -65,18 +58,16 @@ template<int N>
 void parallelize(T_s (&out)[N], T_s & in);
 
 // popping and formating to arrays and arrays of arrays
-template<int N = 0>
-void pop (T &x_t, T_s &x_s);
-template<int N>
-void pop(T (&arr_t)[N], T_s (&arr_s)[N]);
-template<int N>
-void pop(T (&arr_t)[N], T_s &arr_s);
-template<int B, int N>
-void pop(T (&arr_t)[B][N], T_s (&arr_s)[N]);
-template<int B, int N>
-void pop(T (&arr_t)[B][N], T_s (&arr_s));
-template<int B, int N>
-void pop(T (&arr_t)[B][N], T_ss &arr_s);
+template<typename t, int N = 0>
+void pop (t &x_t, hls::stream<t> &x_s);
+template<typename t, int N>
+void pop(t (&arr_t)[N], hls::stream<t> (&arr_s)[N]);
+template<typename t, int N>
+void pop(t (&arr_t)[N], hls::stream<t> &arr_s);
+template<typename t, int B, int N>
+void pop(t (&arr_t)[B][N], hls::stream<t> (&arr_s)[N]);
+template<typename t, int B, int N>
+void pop(t (&arr_t)[B][N], hls::stream<t> (&arr_s));
 
 
 // print functions for debugging
@@ -86,20 +77,16 @@ template <int N, int M>
 void print_mat(const T (&m)[N][M]);
 
 // pushing and fitting formated arrays and array of arrays
-template<int N>
-void push(T_s (&arr_s)[N], T (&arr_t)[N]);
-template<int B, int N>
-void push(T_s (&arr_s)[N], T (&arr_t)[B][N]);
-template<int B, int N>
-void push(T_s (&arr_s), T (&arr_t)[B][N]);
-template<int B, int N>
-void push(T_sa<N> &arr_s, T (&arr_t)[B][N]);
+template<typename t, int N>
+void push(hls::stream<t> (&arr_s)[N], t (&arr_t)[N]);
+template<typename t, int B, int N>
+void push(hls::stream<t> (&arr_s)[N], t (&arr_t)[B][N]);
+template<typename t, int B, int N>
+void push(hls::stream<t> (&arr_s), t (&arr_t)[B][N]);
 
 // elementwise setting to zero
 template <int N> 
 void reset(T (&v)[N]);
-template <int N> 
-void reset(hls::write_lock<T[N]> &v);
 template <int N, int M> 
 void reset(T (&m)[N][M]);
 
@@ -190,41 +177,12 @@ void copy(T (&m1)[N][M], const T (&m2)[N][M]){
 	}
 }
 
-// template<int N, int M>
-// void copy(T (&m1)[N][M], const float (&m2)[N][M]){
-// 	for(int i = 0; i < N; i++){
-// 		for(int j = 0; j < M; j++){
-// 			m1[i][j] = m2[i][j];
-// 		}
-// 	}
-// }
-
-template<int B, int N, int M>
-void copy(T (&m1)[B][N][M], const T (&m2)[N][M]){
-	for(int b = 0; b < B; b++){copy(m1[b], m2);}
-}
-
 template<int N>
 void copy(T (&out)[N], const T (&in)[N]){
 	for(int i = 0; i < N; i++){
 		out[i] = in[i];
 	}
 }
-
-template<int N>
-void copy(T (&out)[N], hls::read_lock<T[N]> &in){
-	for(int i = 0; i < N; i++){
-		out[i] = in[i];
-	}
-}
-
-// template<int N>
-// void copy(T (&out)[N], const float (&in)[N]){
-// 	for(int i = 0; i < N; i++){
-// 		out[i] = in[i];
-// 	}
-// }
-
 
 template<int N>
 void encode(T (&out)[N], const int num){
@@ -257,17 +215,6 @@ void outer(T (&m)[N][M], const T (&v1)[N], const T (&v2)[M]) {
         }
     }
 }
-template <int N, int M>
-void outer(T (&m)[N][M], hls::read_lock<T[N]> &v1, const T (&v2)[M]) {
-    #pragma HLS array_partition variable=v2 dim=1 complete
-
-    for (int i = 0; i < N; i++) {
-        for (int j = 0; j < M; j++) {
-            #pragma HLS unroll
-            m[i][j] = v1[i] * v2[j];
-        }
-    }
-}
 
 template<int N>
 void parallelize(T_s (&out)[N], T_s & in){
@@ -276,58 +223,40 @@ void parallelize(T_s (&out)[N], T_s & in){
     }
 }
 
-template<int N>
-void pop (T &x_t, T_s &x_s){
-    // int i =0;
-    // while(x_s.empty()){
-        // i++;
-        // std::cout << i << std::endl;
-    // }
+template<typename t, int N>
+void pop (t &x_t, hls::stream<t> &x_s){
     x_t = x_s.read();
 }
 
-template<int N>
-void pop(T (&arr_t)[N], T_s (&arr_s)[N]){
+template<typename t, int N>
+void pop(t (&arr_t)[N], hls::stream<t> (&arr_s)[N]){
 	// #pragma HLS array_partition variable=arr_t dim=1 complete
 	POP_ARR:for(int i = 0; i<N; i++){
 		// #pragma HLS unroll
-		// arr_t[i] = arr_s[i].read();
 		pop(arr_t[i], arr_s[i]);
 	}
 }
 
-template<int N>
-void pop(T (&arr_t)[N], T_s &arr_s){
+template<typename t, int N>
+void pop(t (&arr_t)[N], hls::stream<t> &arr_s){
     for(int i = 0; i < N; i++){
         arr_t[i] = arr_s.read();
     }    
 
 }
 
-template<int B, int N>
-void pop(T (&arr_t)[B][N], T_s (&arr_s)[N]){
+template<typename t, int B, int N>
+void pop(t (&arr_t)[B][N], hls::stream<t> (&arr_s)[N]){
 	for(int b = 0; b < B; b++){pop(arr_t[b], arr_s);}
 }
 
-template<int B, int N>
-void pop(T (&arr_t)[B][N], T_s (&arr_s)){
+template<typename t, int B, int N>
+void pop(t (&arr_t)[B][N], hls::stream<t> (&arr_s)){
 	for(int i = 0; i < B; i++){
 
 		for(int j = 0; j < N; j++){
 			// arr_t[i][j] = arr_s.read();
 			pop(arr_t[i][j], arr_s);
-		}
-	}
-}
-
-template<int B, int N>
-void pop(T (&arr_t)[B][N], T_ss &arr_s){
-    for(int i = 0; i < B; i++){
-		for(int j = 0; j < N; j++){
-			// arr_t[i][j] = arr_s.read();
-			// pop(arr_t[i][j], arr_s);
-			hls::read_lock<T> tmp(arr_s);
-            arr_t[i][j] = tmp;
 		}
 	}
 }
@@ -347,7 +276,7 @@ void print_mat(T (&m)[N][M]) {
     cout << "[";
     for (int i = 0; i < N; i++) {
           cout << "[";
-        for (int j = 0; j < M; j++) {
+        for (int j = 0; j < M; j++){ 
             cout << m[i][j] << ", ";
         }
         cout << "]," << endl;
@@ -355,22 +284,22 @@ void print_mat(T (&m)[N][M]) {
     cout << "]" << endl;
 }
 
-template<int N>
-void push(T_s (&arr_s)[N], T (&arr_t)[N]){
+template<typename t, int N>
+void push(hls::stream<t> (&arr_s)[N], t (&arr_t)[N]){
 	PUSH_ARR:for(int i = 0; i<N; i++){
 		arr_s[i] << arr_t[i];
 	}
 }
 
-template<int B, int N>
-void push(T_s(&arr_s)[N], T(&arr_t)[B][N]){
+template<typename t, int B, int N>
+void push(hls::stream<t> (&arr_s)[N], t (&arr_t)[B][N]){
 	for(int b = 0; b < B; b++){
 		push(arr_s, arr_t[b]);
 	}
 }
 
-template<int B, int N>
-void push(T_s (&arr_s), T (&arr_t)[B][N]){
+template<typename t, int B, int N>
+void push(hls::stream<t> (&arr_s), t (&arr_t)[B][N]){
 	for(int b = 0; b < B; b++){
 		for(int i = 0; i < N; i++){
 			arr_s << arr_t[b][i];
@@ -385,16 +314,6 @@ void reset(T (&v)[N]) {
 		#pragma HLS unroll
         v[i] = 0;
     }
-}
-
-template <int N> 
-void reset(hls::write_lock<T[N]> &v){
-	#pragma HLS array_partition variable=v dim=1 complete
-    for (int i = 0; i < N; i++) {
-		#pragma HLS unroll
-        v[i] = 0;
-    }
-
 }
 
 template <int N, int M> 
@@ -433,15 +352,5 @@ void transpose(T (&mt)[M][N], const T (&m)[N][M]) {
         }
     }
 }
-
-// template <int N, int M> 
-// void transpose(T (&mt)[M][N], const float (&m)[N][M]) {
-//     for (int i = 0; i < N; i++) {
-//         for (int j = 0; j < M; j++) {
-//             mt[j][i] = m[i][j];
-//         }
-//     }
-// }
-
 
 #endif

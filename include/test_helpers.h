@@ -6,6 +6,7 @@
 #include "../data/i_o.h"
 #include "../data/model_params.h"
 #include "../data/model_grads.h"
+// Return Error when inputs differ by err 
 bool cmp(T &a, T &b, float err);
 template<int N>
 bool cmp(T (&v1)[N], T(&v2)[N], float err);
@@ -15,9 +16,12 @@ template<int IN, int L1, int L2, int OUT>
 bool cmp(Grad<IN, L1, L2, OUT> &grad_id, Grad<IN, L1, L2, OUT> &grad_model, float err);
 template<int IN, int OUT>
 bool cmp(Weights_Grad<IN, OUT> g1, Weights_Grad<IN, OUT> g2, float err);
+
+//copy 
 template<int N>
 void copy (int (&out)[N], const int (&in)[N]);
 
+// load testbench data
 template<int IN, int L1, int L2, int OUT>
 void load_grad(Grad<IN, L1, L2, OUT> &grad);
 
@@ -27,6 +31,8 @@ void load_io(int (&target)[B], T (&out)[B][OUT], T (&in)[B][IN]);
 template<int IN, int L1, int L2, int OUT>
 void load_net(Network<IN, L1, L2, OUT> &Net);
 
+
+// return relative max error |m1 - m2|/m2 
 template<int N>
 float max_err(T (&m1)[N], T (&m2)[N]);
 

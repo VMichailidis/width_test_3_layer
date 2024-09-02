@@ -60,30 +60,18 @@ void CE_train_wrapper(T (&loss)[BATCH], T (&pred)[BATCH][OUT_DIM], T (&dout)[BAT
 BATCH_loop: for(int b = 0; b < BATCH; b++){
         #pragma HLS dataflow
         if((b+1)%50 ==0){hls::print("batch %d \n", b+1);}
-        // hls::print("l1 \n");
         l1.forward();
-        // hls::print("r1 \n");
         r1.forward();
-        // hls::print("l2 \n");
         l2.forward();
-        // hls::print("r2 \n");
         r2.forward();
-        // hls::print("l3 \n");
         l3.forward();
-        // hls::print("parallelize \n");
         parallelize(ps3, s3);
-        // hls::print("ce \n");
         ce.run();
 
-        // hls::print("l3_b \n");
         l3.backward();
-        // hls::print("r2_b \n");
         r2.backward();
-        // hls::print("l2_b \n");
         l2.backward();
-        // hls::print("r1_b \n");
         r1.backward();
-        // hls::print("l1_b \n");
         l1.backward();
 
     }
