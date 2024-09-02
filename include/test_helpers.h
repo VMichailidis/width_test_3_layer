@@ -6,44 +6,98 @@
 #include "../data/i_o.h"
 #include "../data/model_params.h"
 #include "../data/model_grads.h"
+
+// average error across an array
+template<typename t, int N>
+float avg_error(t (&m_hw)[N], float(&m_sw)[N]);
+template<typename t, int N, int M>
+float avg_error(t (&m_hw)[N][M], float (&m_sw)[N][M]);
+template<typename t, int IN, int OUT>
+void avg_error(Layer_err &err,Weights_Grad<t, IN, OUT> g_hw, Weights_Grad<float, IN, OUT> g_sw);
+template<typename t, int IN, int L1, int L2, int OUT>
+void avg_error(Net_err &err, Grad<t, IN, L1, L2, OUT> g_hw, Grad<float, IN, L1, L2, OUT> g_sw);
+
 // Return Error when inputs differ by err 
 bool cmp(T &a, T &b, float err);
 template<int N>
 bool cmp(T (&v1)[N], T(&v2)[N], float err);
 template<int N, int M>
 bool cmp(T (&m1)[N][M], T(&m2)[N][M], float err);
-template<int IN, int L1, int L2, int OUT>
-bool cmp(Grad<IN, L1, L2, OUT> &grad_id, Grad<IN, L1, L2, OUT> &grad_model, float err);
-template<int IN, int OUT>
-bool cmp(Weights_Grad<IN, OUT> g1, Weights_Grad<IN, OUT> g2, float err);
+template<typename t, int IN, int L1, int L2, int OUT>
+bool cmp(Grad<t, IN, L1, L2, OUT> &grad_id, Grad<t, IN, L1, L2, OUT> &grad_model, float err);
+template<typename t, int IN, int OUT>
+bool cmp(Weights_Grad<t, IN, OUT> g1, Weights_Grad<t, IN, OUT> g2, float err);
 
 //copy 
 template<int N>
 void copy (int (&out)[N], const int (&in)[N]);
 
+// relative error = |m1-m2|/m2
+template<typename t>
+float error(t &m_hw, float &m_sw);
+
 // load testbench data
-template<int IN, int L1, int L2, int OUT>
-void load_grad(Grad<IN, L1, L2, OUT> &grad);
+template<typename t, int IN, int L1, int L2, int OUT>
+void load_grad(Grad<t, IN, L1, L2, OUT> &grad);
 
 template<int IN, int OUT, int B>
-void load_io(int (&target)[B], T (&out)[B][OUT], T (&in)[B][IN]);
+void load_io(int (&target)[B], float (&out)[B][OUT], T (&in)[B][IN]);
 
-template<int IN, int L1, int L2, int OUT>
-void load_net(Network<IN, L1, L2, OUT> &Net);
+template<typename t, int IN, int L1, int L2, int OUT>
+void load_net(Network<t, IN, L1, L2, OUT> &Net);
 
+//returns max arguement
+template<typename t, int N>
+int max_arg(t (&in)[N]);
+template<typename t, int N, int M>
+void max_arg(int (&out)[N], t (&in)[N][M]);
 
 // return relative max error |m1 - m2|/m2 
+template<typename t, int N>
+float max_err(t (&m_hw)[N], float (&m_sw)[N]);
+template<typename t, int N, int M>
+float max_err(t (&m_hw)[N][M], float (&m_sw)[N][M]);
+template<typename t, int IN, int OUT>
+void max_err(Layer_err &err, Weights_Grad<t, IN, OUT> &g1, Weights_Grad<float, IN, OUT> &g2);
+template<typename t, int IN, int L1, int L2, int OUT>
+void max_err(Net_err &err, Grad<t, IN, L1, L2, OUT> &g1, Grad<float, IN, L1, L2, OUT> &g2);
+
 template<int N>
-float max_err(T (&m1)[N], T (&m2)[N]);
+float pred_err(int (&p_hw)[N], int (&p_sw)[N]);
 
-template<int N, int M>
-float max_err(T (&m1)[N][M], T (&m2)[N][M]);
+template<typename t, int N>
+float avg_error(t (&m_hw)[N], float (&m_sw)[N]){
+    float sum=0;
+    for(int i = 0; i < N; i++){
+        sum += error(m_hw[i], m_sw[i]);
+    }
+    return sum/float(N);
+}
 
-template<int IN, int OUT>
-float max_err(Weights_Grad<IN, OUT> &g1, Weights_Grad<IN, OUT> &g2);
 
-template<int IN, int L1, int L2, int OUT>
-float max_err(Grad<IN, L1, L2, OUT> &g1, Grad<IN, L1, L2, OUT> &g2);
+template<typename t, int N, int M>
+float avg_error(t (&m_hw)[N][M], float (&m_sw)[N][M]){
+    float sum=0;
+    for(int i = 0; i < N; i++){
+        for(int j = 0; j < M; j++){
+            sum += error(m_hw[i][j], m_sw[i][j]);
+        }
+    }
+    return sum/float(N*M);
+}
+
+template<typename t, int IN, int OUT>
+void avg_error(Layer_err &err, Weights_Grad<t, IN, OUT> g_hw, Weights_Grad<float, IN, OUT> g_sw){
+    err.w = avg_error(g_hw.w, g_sw.w);
+    err.b = avg_error(g_hw.b, g_sw.b);
+}
+
+template<typename t, int IN, int L1, int L2, int OUT>
+void avg_error(Net_err &err, Grad<t, IN, L1, L2, OUT> g_hw, Grad<float, IN, L1, L2, OUT> g_sw){
+    avg_error(err.l1, g_hw.l1, g_sw.l1);
+    avg_error(err.l2, g_hw.l2, g_sw.l2);
+    avg_error(err.l3, g_hw.l3, g_sw.l3);
+}
 
 template<int N>
 bool cmp(T (&v1)[N], T(&v2)[N], float err){
@@ -63,9 +117,9 @@ bool cmp(T (&m1)[N][M], T(&m2)[N][M], float err){
     return errors > 0;
 }
 
-template<int IN, int L1, int L2, int OUT>
-bool cmp(Grad<IN, L1, L2, OUT> &grad_id, 
-              Grad<IN, L1, L2, OUT> &grad_model,
+template<typename t, int IN, int L1, int L2, int OUT>
+bool cmp(Grad<t, IN, L1, L2, OUT> &grad_id, 
+              Grad<t, IN, L1, L2, OUT> &grad_model,
               float err){
     
     int errors = 0;
@@ -87,8 +141,8 @@ bool cmp(Grad<IN, L1, L2, OUT> &grad_id,
     return errors > 0;
 }
 
-template<int IN, int OUT>
-bool cmp(Weights_Grad<IN, OUT> g1, Weights_Grad<IN, OUT> g2, float err){
+template<typename t, int IN, int OUT>
+bool cmp(Weights_Grad<t, IN, OUT> g1, Weights_Grad<t, IN, OUT> g2, float err){
     int errors = 0;
     
     cout << "comparing dw" <<endl;
@@ -108,8 +162,16 @@ void copy (int (&out)[N], const int (&in)[N]){
     }
 }
 
-template<int IN, int L1, int L2, int OUT>
-void load_grad(Grad<IN, L1, L2, OUT> &grad){
+template<typename t>
+float error(t &m_hw, float &m_sw){
+    float tmp;
+    if(m_sw == 0){tmp = float(m_hw);}
+    else{tmp = abs((float(m_hw) - m_sw)/m_sw);}
+    return tmp;
+}
+
+template<typename t,int IN, int L1, int L2, int OUT>
+void load_grad(Grad<t, IN, L1, L2, OUT> &grad){
     copy(grad.l1.w, grad_w_1);
     copy(grad.l1.b, grad_b_1);
     copy(grad.l2.w, grad_w_2);
@@ -120,14 +182,14 @@ void load_grad(Grad<IN, L1, L2, OUT> &grad){
 }
 
 template<int IN, int OUT, int B>
-void load_io(int (&target)[B], T (&out)[B][OUT], T (&in)[B][IN]){
+void load_io(int (&target)[B], float (&out)[B][OUT], T (&in)[B][IN]){
     for(int i = 0; i < B; i++){target[i] = int(target_batch[i]);} 
     copy(out, out_batch);
     copy(in, in_batch);
 }
 
-template<int IN, int L1, int L2, int OUT>
-void load_net(Network<IN, L1, L2, OUT> &net){
+template<typename t, int IN, int L1, int L2, int OUT>
+void load_net(Network<t, IN, L1, L2, OUT> &net){
     copy(net.l1.w, w_1);
     copy(net.l1.b, b_1);
     copy(net.l2.w, w_2);
@@ -136,57 +198,73 @@ void load_net(Network<IN, L1, L2, OUT> &net){
     copy(net.l3.b, b_3);
 }
 
-template<int N>
-float max_err(T (&m_hw)[N], T (&m_sw)[N]){
+
+template<typename t, int N>
+int max_arg(t (&in)[N]){
+    t max = in[0];
+    int ret = 0;
+    for(int i = 1; i < N; i++){
+        if(max < in[i]){
+            ret = i;
+            max = in[i];
+        }
+    }
+    return ret;
+}
+
+template<typename t, int N, int M>
+void max_arg(int (&out)[N], t (&in)[N][M]){
+    for(int i = 0; i< N; i++){
+        out[i] = max_arg(in[i]);
+    }
+}
+
+template<typename t, int N>
+float max_err(t (&m_hw)[N], float (&m_sw)[N]){
     float err = 0;
     float tmp = 0;
     for(int i = 0; i < N; i++){
-        if(float(m_sw[i]) == 0){tmp = float(m_hw[i]);}
-        else{tmp = abs((float(m_hw[i]) - float(m_sw[i]))/(float(m_sw[i])));}
-        if(err < tmp){
-            err = tmp;
-                // cout << m_hw[i] << " | " << m_sw[i] << "\n";
-        }
+        tmp = error(m_hw[i], m_sw[i]);
+        err = (tmp > err) ? tmp : err;
     }
     return err;
 }
 
-template<int N, int M>
-float max_err(T (&m_hw)[N][M], T (&m_sw)[N][M]){
+template<typename t, int N, int M>
+float max_err(t (&m_hw)[N][M], float (&m_sw)[N][M]){
     float err = 0;
     float tmp = 0;
     for(int i = 0; i < N; i++){
         for(int j = 0; j < M; j++){
-            if(float(m_sw[i][j]) == 0){tmp = float(m_hw[i][j]);}
-            else{tmp = abs((float(m_hw[i][j]) - float(m_sw[i][j]))/(float(m_sw[i][j])));}
-            if(err < tmp){
-                err = tmp;
-                // cout << m_hw[i][j] << " | " << m_sw[i][j];
-            }
+            tmp = error(m_hw[i][j], m_sw[i][j]);
+            err = (tmp > err) ? tmp : err;
         }
     }
     return err;
 }
 
 
-template<int IN, int OUT>
-float max_err(Weights_Grad<IN, OUT> &g_hw, Weights_Grad<IN, OUT> &g_sw){
-    float err = max_err(g_hw.w, g_sw.w);
-    cout << "max error in weights is: "<< err << endl;
-    err = max_err(g_hw.b, g_sw.b);
-    cout << "max error in biases is: "<< err << endl;
-    return 0.0;
+template<typename t, int IN, int OUT>
+void max_err(Layer_err &err, Weights_Grad<t, IN, OUT> &g_hw, Weights_Grad<float, IN, OUT> &g_sw){
+    err.w = max_err(g_hw.w, g_sw.w);
+    err.b = max_err(g_hw.b, g_sw.b);
 }
 
-template<int IN, int L1, int L2, int OUT>
-float max_err(Grad<IN, L1, L2, OUT> &g_hw, Grad<IN, L1, L2, OUT> &g_sw){
-    cout << "layer 1"<< endl;
-    max_err(g_hw.l1, g_sw.l1);
-    cout << "layer 2"<< endl;
-    max_err(g_hw.l2, g_sw.l2);
-    cout << "layer 3"<< endl;
-    max_err(g_hw.l3, g_sw.l3);
-    return 0.0;
+template<typename t, int IN, int L1, int L2, int OUT>
+void max_err(Net_err &err, Grad<t, IN, L1, L2, OUT> &g_hw, Grad<float, IN, L1, L2, OUT> &g_sw){
+    max_err(err.l1, g_hw.l1, g_sw.l1);
+    max_err(err.l2, g_hw.l2, g_sw.l2);
+    max_err(err.l3, g_hw.l3, g_sw.l3);
 }
 
+template<int N>
+float pred_err(int (&p_hw)[N], int (&p_sw)[N]){
+    //returns error rate
+    float sum = 0;
+    for(int i = 0; i < N; i++){
+        sum += (p_hw[i] == p_sw[i]) ? 0.0 : 1.0; // count errors in inputs
+    }
+    return sum/float(N);
+
+}
 #endif

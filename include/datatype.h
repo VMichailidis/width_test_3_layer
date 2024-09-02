@@ -4,8 +4,8 @@
 #include <ap_fixed.h>
 #include "hls_stream.h"
 #include "hls_streamofblocks.h"
-// typedef ap_fixed<64,32> T;
-typedef float T;
+typedef ap_fixed<32,4> T;
+// typedef float T;
 typedef hls::stream<T> T_s;
 #define DEPTH 10
 using namespace std;
@@ -26,16 +26,10 @@ template <int N>
 void cdot(T (&out)[N], T (&v)[N], T n);
 
 // copying 
-template<int N, int M>
-void copy(T (&m1)[N][M], const T (&m2)[N][M]);
-// template<int B, int N, int M>
-// void copy(T (&m1)[B][N][M], const T (&m2)[N][M]);
-template<int N, int M>
-void copy(T (&m1)[N][M], const float (&m2)[N][M]);
-template<int N>
-void copy(T (&out)[N], const T (&in)[N]);
-template<int N>
-void copy(T (&out)[N], const float (&in)[N]);
+template<typename t1, typename t2, int N, int M>
+void copy(t1 (&m1)[N][M], const t2 (&m2)[N][M]);
+template<typename t1, typename t2,int N>
+void copy(t1 (&out)[N], const t2 (&in)[N]);
 
 // one hot encoder
 template<int N>
@@ -168,19 +162,19 @@ void cdot(T (&out)[N], T (&v)[N], T n) {
     }
 }
 
-template<int N, int M>
-void copy(T (&m1)[N][M], const T (&m2)[N][M]){
+template<typename t1, typename t2, int N, int M>
+void copy(t1 (&m1)[N][M], const t2 (&m2)[N][M]){
 	for(int i = 0; i < N; i++){
 		for(int j = 0; j < M; j++){
-			m1[i][j] = m2[i][j];
+			m1[i][j] = t1(m2[i][j]);
 		}
 	}
 }
 
-template<int N>
-void copy(T (&out)[N], const T (&in)[N]){
+template<typename t1, typename t2,int N>
+void copy(t1 (&out)[N], const t2 (&in)[N]){
 	for(int i = 0; i < N; i++){
-		out[i] = in[i];
+		out[i] = t1(in[i]);
 	}
 }
 

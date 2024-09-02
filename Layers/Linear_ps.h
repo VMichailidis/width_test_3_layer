@@ -12,8 +12,8 @@ private:
 	T_s (*din)[OUT];
 	T_s (*in)[IN];
 	T_s in_f[IN];
-	Weights<IN, OUT> W;
-	Weights_Grad<IN, OUT> G;
+	Weights<T, IN, OUT> W;
+	Weights_Grad<T, IN, OUT> G;
 	
 public:
 	
@@ -28,8 +28,8 @@ public:
 	}
 	void backward();
 	void forward();
-	void get_grad(Weights_Grad<IN, OUT> &w_g, T batch_size);
-	void load_weights(Weights<IN,OUT> &w_tmp);
+	void get_grad(Weights_Grad<T, IN, OUT> &w_g, T batch_size);
+	void load_weights(Weights<T, IN,OUT> &w_tmp);
 	void ports(T_s &out_b, T_s &dout_b, T_s (&in_b)[IN], T_s (&din_b)[OUT]); 
 	void reset_grad();
 };
@@ -38,7 +38,7 @@ template<int IN, int OUT>
 void Linear_ps<IN, OUT>::backward(){
 	
 	T din_pop[OUT], din_tmp[OUT], in_tmp[IN];
-	Weights_Grad<IN, OUT> g_tmp;
+	Weights_Grad<T, IN, OUT> g_tmp;
 	
 	pop(din_tmp, *din);
 	pop(in_tmp, in_f);
@@ -75,12 +75,12 @@ void Linear_ps<IN, OUT>::forward(){
 }
 
 template<int IN, int OUT>
-void Linear_ps<IN, OUT>::load_weights(Weights<IN, OUT> &w_tmp){
+void Linear_ps<IN, OUT>::load_weights(Weights<T, IN, OUT> &w_tmp){
 	copy(W, w_tmp);
 }
 
 template<int IN, int OUT>
-void Linear_ps<IN, OUT>::get_grad(Weights_Grad<IN, OUT> &w_g, T batch_size){
+void Linear_ps<IN, OUT>::get_grad(Weights_Grad<T, IN, OUT> &w_g, T batch_size){
 	// copy(w_g, G);
     mul(w_g.w, 1/batch_size, G.w);
     mul(w_g.b, 1/batch_size, G.b);

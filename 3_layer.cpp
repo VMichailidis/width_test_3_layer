@@ -8,7 +8,7 @@
 #include "include/Network.h"
 
 void CE_train_wrapper(T (&loss)[BATCH], T (&pred)[BATCH][OUT_DIM], T (&dout)[BATCH][IN_DIM], 
-                      Network<IN_DIM, L1_c, L2_c, OUT_DIM> &Net, Grad<IN_DIM, L1_c, L2_c, OUT_DIM> &Grad,
+                      Network<T, IN_DIM, L1_c, L2_c, OUT_DIM> &Net, Grad<T, IN_DIM, L1_c, L2_c, OUT_DIM> &Grad,
 	                  T (&in)[BATCH][IN_DIM], int (&val)[BATCH]){
 	cout << "test0"<<endl;
     T_s in_tmp[IN_DIM], dout_tmp;

@@ -13,7 +13,7 @@ using namespace std;
 #define BATCH_test 10
 
 void CE_train_wrapper(T (&loss)[BATCH], T (&pred)[BATCH][OUT_DIM], T (&dout)[BATCH][IN_DIM], 
-                      Network<IN_DIM, L1_c, L2_c, OUT_DIM> &Net, Grad<IN_DIM, L1_c, L2_c, OUT_DIM> &Grad,
+                      Network<T, IN_DIM, L1_c, L2_c, OUT_DIM> &Net, Grad<T, IN_DIM, L1_c, L2_c, OUT_DIM> &Grad,
 	                  T (&in)[BATCH][IN_DIM], int (&val)[BATCH]);
 #endif
 
