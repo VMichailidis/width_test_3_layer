@@ -44,9 +44,9 @@ void CrossEntropy<N>::run(){
 
 	(*loss) << loss_tmp;
 	push(*dout, dout_tmp);
-	push(*pred, pred_tmp);
+	// push(*pred, pred_tmp);
+	push(*pred, in_tmp);
 }
-
 
 
 #endif

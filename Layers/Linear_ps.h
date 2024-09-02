@@ -28,7 +28,7 @@ public:
 	}
 	void backward();
 	void forward();
-	void get_grad(Weights_Grad<IN, OUT> &w_g);
+	void get_grad(Weights_Grad<IN, OUT> &w_g, T batch_size);
 	void load_weights(Weights<IN,OUT> &w_tmp);
 	void ports(T_s &out_b, T_s &dout_b, T_s (&in_b)[IN], T_s (&din_b)[OUT]); 
 	void reset_grad();
@@ -45,7 +45,6 @@ void Linear_ps<IN, OUT>::backward(){
 	outer(g_tmp.w, din_tmp, in_tmp);
 	copy(g_tmp.b, din_tmp);
 	
-	// cout << "entering Lin parallel" << endl;
 	ROW: for(int i = 0; i < IN; i++){
 		T acc = 0;
 		COL:for(int j = 0; j < OUT; j++){ // columnwise product-accumulate
@@ -54,6 +53,17 @@ void Linear_ps<IN, OUT>::backward(){
 		}
 		*dout << acc;
 	}
+	// T dout_tmp[IN];
+	// cdot(dout_tmp, W.w, din_tmp);
+	// print_array(dout_tmp);
+	// copy(dout_tmp, din_tmp);
+	// for(int i = 0; i < IN; i++){
+	// 	dout_tmp[i] = 0;
+	// 	for(int j = 0; j < OUT; j++){
+	// 		 dout_tmp[i] += W.w[j][i] * din_tmp[j];	
+	// 	}
+	// }
+	// for(int i = 0; i < IN; i ++){*dout << dout_tmp[i];}
 	add(G, G, g_tmp);
 }
 
@@ -81,8 +91,10 @@ void Linear_ps<IN, OUT>::load_weights(Weights<IN, OUT> &w_tmp){
 }
 
 template<int IN, int OUT>
-void Linear_ps<IN, OUT>::get_grad(Weights_Grad<IN, OUT> &w_g){
-	copy(w_g, G);
+void Linear_ps<IN, OUT>::get_grad(Weights_Grad<IN, OUT> &w_g, T batch_size){
+	// copy(w_g, G);
+    mul(w_g.w, 1/batch_size, G.w);
+    mul(w_g.b, 1/batch_size, G.b);
 }
 
 template<int IN, int OUT>

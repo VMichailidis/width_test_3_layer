@@ -30,7 +30,7 @@ public:
 
 	void backward();
 	void forward();
-	void get_grad(Weights_Grad<IN, OUT> &w_g);
+	void get_grad(Weights_Grad<IN, OUT> &w_g, T batch_size);
 	void load_weights(Weights<IN,OUT> &w_tmp);
 	void ports(T_s (&out_b)[OUT], T_s (&dout_b)[IN], T_s &in_b, T_s &din_b); 
 	void reset_grad();
@@ -39,23 +39,26 @@ public:
 
 template<int IN, int OUT>
 void Linear_sp<IN, OUT>::backward(){	
+	// divide by batchsize
 	Weights_Grad<IN, OUT>g_tmp;
 	T in_tmp[IN];
 	T dout_tmp[IN];
+	T din_tmp[OUT];
 	READ:for(int i = 0; i < IN; i++){in_tmp[i] = in_f.read();} // read input //error here probably
     // cout << "read input"<< endl;
 	reset(dout_tmp);
 	ROW:for(int i = 0; i < OUT; i++){
-		T din_tmp = (*din).read();  
+		din_tmp[i] = (*din).read();  
 		// T din_tmp = din_pop > T(0.0) ? din_pop : T(0.0);
-		g_tmp.b[i] = din_tmp; // grad_b
+		g_tmp.b[i] = din_tmp[i]; // grad_b
 		COL:for(int j = 0; j < IN; j++){  
 		// #pragma HLS pipeline
         // cout << i << j << endl;
-			g_tmp.w[i][j] = in_tmp[j] * din_tmp; //grad_dw
-			dout_tmp[j] += w_t[j][i] * din_tmp; //dout
+			g_tmp.w[i][j] = in_tmp[j] * din_tmp[i]; //grad_dw
+			dout_tmp[j] += w_t[j][i] * din_tmp[i]; //dout
 		}
 	}
+	// print_array(g_tmp.b);
 	push(*dout, dout_tmp);
 	// print_array(dout_tmp);
 	add(G, G, g_tmp);
@@ -67,24 +70,27 @@ void Linear_sp<IN, OUT>::forward(){
 	T out_temp[OUT];
 	T out_bias[OUT];
 	T out_r[OUT];
-	T in_temp;	
+	T in_temp[IN];	// TODO make in_temp[IN] to in_temp (array unesassary)
 	#pragma HLS array_partition variable=out_temp dim=1 complete
 	// cout << "entering Lin serial" << endl;
 	reset(out_temp);
 	COL: for(int j = 0; j < IN; j++){
 		// #pragma HLS pipeline
-		in_temp = (*in).read();
+		in_temp[j] = (*in).read();
 	    // cout << j << endl;
-		in_f << in_temp;
-		cdot(out_temp, w_t[j], in_temp);
+		in_f << in_temp[j];
+		cdot(out_temp, w_t[j], in_temp[j]);
 	}
+	// print_array(in_temp);
 	add(out_bias, out_temp, W.b);
 	push(*out, out_bias);
 	}
 
 template<int IN, int OUT>
-void Linear_sp<IN, OUT>::get_grad(Weights_Grad<IN, OUT> &w_g){
-    copy(w_g, G);
+void Linear_sp<IN, OUT>::get_grad(Weights_Grad<IN, OUT> &w_g, T batch_size){
+    // copy(w_g, G);
+    mul(w_g.w, 1/batch_size, G.w);
+    mul(w_g.b, 1/batch_size, G.b);
     // print_mat(w_g.w);
 }
 

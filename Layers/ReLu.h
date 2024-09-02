@@ -9,6 +9,7 @@ private:
 	T_s (*dout);
 	T_s (*in)[N];
 	T_s (*din);
+	T_s in_f[N];
 
 public:
 	ReLu_sp(T_s (&out_b)[N], T_s(&dout_b), T_s (&in_b)[N], T_s (&din_b)){
@@ -23,11 +24,12 @@ public:
 
 template<int N>
 void ReLu_sp<N>::backward(){
-	T out_tmp, in_tmp;
+	T dout_tmp, din_tmp, in_tmp[N];
+	pop(in_tmp, in_f);
 	for(int i =0; i < N; i++){
-		in_tmp = (*din).read();
-		out_tmp = in_tmp > T(0) ? in_tmp : T(0);
-		(*dout) << out_tmp;
+		din_tmp = (*din).read();
+		dout_tmp = in_tmp[i] > T(0) ? din_tmp : T(0);
+		(*dout) << dout_tmp;
 	}
 }
 
@@ -37,6 +39,7 @@ void ReLu_sp<N>::forward(){
 	#pragma HLS array_partition variable=in_tmp dim=1 complete
 	#pragma HLS array_partition variable=in_tmp dim=1 complete
 	pop(in_tmp, *in);
+	push(in_f, in_tmp);
 	for(int i = 0; i < N; i++){
 		#pragma HLS unroll
 		out_tmp[i] = in_tmp[i] > T(0) ? in_tmp[i] : T(0);
@@ -51,6 +54,7 @@ private:
 	T_s (*dout)[N];
 	T_s (*in);
 	T_s (*din)[N];
+	T_s in_f;
 
 public:
 	ReLu_ps(T_s (&out_b), T_s (&dout_b)[N], T_s (&in_b), T_s (&din_b)[N]){
@@ -64,15 +68,16 @@ public:
 };
 template<int N>
 void ReLu_ps<N>::backward(){
-	T out_tmp[N], in_tmp[N];
+	T dout_tmp[N], din_tmp[N];
 	#pragma HLS array_partition variable=in_tmp dim=1 complete
 	#pragma HLS array_partition variable=in_tmp dim=1 complete
-	pop(in_tmp, *din);
+	pop(din_tmp, *din);
 	for(int i = 0; i < N; i++){
 		#pragma HLS unroll
-		out_tmp[i] = in_tmp[i] > T(0) ? in_tmp[i] : T(0);
+		T in_tmp = in_f.read();
+		dout_tmp[i] = in_tmp > T(0) ? din_tmp[i] : T(0);
 	}
-	push(*dout, out_tmp);
+	push(*dout, dout_tmp);
 }
 
 template<int N>
@@ -81,6 +86,7 @@ void ReLu_ps<N>::forward(){
 	for(int i=0; i < N; i++){
 		#pragma HLS pipeline
 		in_tmp = (*in).read();
+		in_f << in_tmp;
 		out_tmp = in_tmp > T(0) ? in_tmp : T(0);
 		(*out) << out_tmp;
 	}

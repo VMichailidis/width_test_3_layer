@@ -1,16 +1,15 @@
 #ifndef NETWORK_H
 #define NETWORK_H
 #include "datatype.h"
+#include "Weights.h"
 // #include "Layer.h"
 
 template<int IN, int L1, int L2,int OUT>
 struct Network{
-    T w1[L1][IN];
-    T b1[L1];
-    T w2_t[L1][L2];
-    T b2[L2];
-    T w3[OUT][L2];
-    T b3[OUT];
+    Weights<IN, L1> l1;
+    Weights<L1, L2> l2;
+    Weights<L2, OUT> l3;
+
 
     // Layer<IN, L1> l1;
     // Layer<L1, OUT> l2;
@@ -18,13 +17,9 @@ struct Network{
 
 template<int IN, int L1, int L2,int OUT>
 struct Grad{
-    T w1[L1][IN];
-    T b1[L1];
-    T w2_t[L1][L2];
-    T b2[L2];
-    T w3[OUT][L2];
-    T b3[OUT];
-
+    Weights_Grad<IN, L1> l1;
+    Weights_Grad<L1, L2> l2;
+    Weights_Grad<L2, OUT> l3;
 };
 
 template <int IN, int L1, int L2, int OUT>
@@ -33,6 +28,8 @@ void add(Grad<IN, L1, L2, OUT> &out, const Grad<IN, L1, L2, OUT> &g1, const Grad
 template <int IN, int L1, int L2, int OUT>
 void copy(Network<IN, L1, L2, OUT> &net_out, const Network<IN, L1, L2, OUT> &net_in);
 
+template<int IN, int L1, int L2, int OUT>
+void mul(Grad<IN, L1, L2, OUT> &out, T num, const Grad<IN, L1, L2, OUT> &in);
 
 template <int IN, int L1, int L2, int OUT>
 void reset(Grad<IN, L1, L2, OUT> &grad);
@@ -62,6 +59,16 @@ void copy(Network<IN, L1, L2, OUT> &net_out, const Network<IN, L1, L2, OUT> &net
 	
 	copy(net_out.w3, net_in.w3);
 	copy(net_out.b3, net_in.b3);
+}
+
+template<int IN, int L1, int L2, int OUT>
+void mul(Grad<IN, L1, L2, OUT> &out, T num, const Grad<IN, L1, L2, OUT> &in){
+    mul(out.l1.w, num, in.l1.w);
+    mul(out.l1.b, num, in.l1.b);
+    mul(out.l2.w, num, in.l2.w);
+    mul(out.l2.b, num, in.l2.b);
+    mul(out.l3.w, num, in.l3.w);
+    mul(out.l3.b, num, in.l3.b);
 }
 
 template <int IN, int L1, int L2, int OUT>

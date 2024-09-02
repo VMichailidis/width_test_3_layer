@@ -4,7 +4,8 @@
 #include <ap_fixed.h>
 #include "hls_stream.h"
 #include "hls_streamofblocks.h"
-typedef ap_fixed<16,8> T;
+// typedef ap_fixed<64,32> T;
+typedef float T;
 typedef hls::stream<T> T_s;
 #define DEPTH 10
 template<int SIZE>
@@ -45,11 +46,23 @@ void copy(T (&out)[N], const float (&in)[N]);
 template<int N>
 void encode(T (&out)[N], const int num);
 
+// multiplication
+template<int N>
+void mul(T (&out)[N], T num, T (&in)[N]);
+
+template<int N, int M>
+void mul(T (&out)[N][M], T num, T (&in)[N][M]);
+
 // outer product
 template <int N, int M>
 void outer(T (&m)[N][M], const T (&v1)[N], const T (&v2)[M]);
 template <int N, int M>
 void outer(T (&m)[N][M], hls::read_lock<T[N]> &v1, const T (&v2)[M]);
+
+
+//parallelize 
+template<int N>
+void parallelize(T_s (&out)[N], T_s & in);
 
 // popping and formating to arrays and arrays of arrays
 template<int N = 0>
@@ -68,9 +81,9 @@ void pop(T (&arr_t)[B][N], T_ss &arr_s);
 
 // print functions for debugging
 template <int N> 
-void print_array(T (&v)[N]);
+void print_array(const T (&v)[N]);
 template <int N, int M> 
-void print_mat(T (&m)[N][M]);
+void print_mat(const T (&m)[N][M]);
 
 // pushing and fitting formated arrays and array of arrays
 template<int N>
@@ -177,14 +190,14 @@ void copy(T (&m1)[N][M], const T (&m2)[N][M]){
 	}
 }
 
-template<int N, int M>
-void copy(T (&m1)[N][M], const float (&m2)[N][M]){
-	for(int i = 0; i < N; i++){
-		for(int j = 0; j < M; j++){
-			m1[i][j] = m2[i][j];
-		}
-	}
-}
+// template<int N, int M>
+// void copy(T (&m1)[N][M], const float (&m2)[N][M]){
+// 	for(int i = 0; i < N; i++){
+// 		for(int j = 0; j < M; j++){
+// 			m1[i][j] = m2[i][j];
+// 		}
+// 	}
+// }
 
 template<int B, int N, int M>
 void copy(T (&m1)[B][N][M], const T (&m2)[N][M]){
@@ -205,18 +218,32 @@ void copy(T (&out)[N], hls::read_lock<T[N]> &in){
 	}
 }
 
-template<int N>
-void copy(T (&out)[N], const float (&in)[N]){
-	for(int i = 0; i < N; i++){
-		out[i] = in[i];
-	}
-}
+// template<int N>
+// void copy(T (&out)[N], const float (&in)[N]){
+// 	for(int i = 0; i < N; i++){
+// 		out[i] = in[i];
+// 	}
+// }
 
 
 template<int N>
 void encode(T (&out)[N], const int num){
     for (int i = 0; i < N; i++) {
         out[i] = i == num ? T(1) : T(0);
+    }
+}
+
+template<int N>
+void mul(T (&out)[N], T num, T (&in)[N]){
+    for(int i = 0; i < N; i++){
+        out[i] = num*in[i];
+    }
+}
+
+template<int N, int M>
+void mul(T (&out)[N][M], T num, T (&in)[N][M]){
+    for(int i = 0; i < N; i++){
+        mul(out[i], num, in[i]);
     }
 }
 
@@ -239,6 +266,13 @@ void outer(T (&m)[N][M], hls::read_lock<T[N]> &v1, const T (&v2)[M]) {
             #pragma HLS unroll
             m[i][j] = v1[i] * v2[j];
         }
+    }
+}
+
+template<int N>
+void parallelize(T_s (&out)[N], T_s & in){
+    for(int i = 0; i < N; i++){
+        out[i] << in.read();
     }
 }
 
@@ -298,28 +332,28 @@ void pop(T (&arr_t)[B][N], T_ss &arr_s){
 	}
 }
 
-// template <int N> 
-// void print_array(T (&v)[N]) {
-//     cout << "{";
-//     for (int i = 0; i < N - 1; i++) {
-//         cout << v[i] << " ";
-//     }
-//     cout << v[N - 1] << "}" << endl;
-// }
-//
-// template <int N, int M> 
-// void print_mat(T (&m)[N][M]) {
-//     cout << "matrix of size: " << N << "x" << M << endl;
-//     cout << "[";
-//     for (int i = 0; i < N; i++) {
-//           cout << "[";
-//         for (int j = 0; j < M; j++) {
-//             cout << m[i][j] << ", ";
-//         }
-//         cout << "]," << endl;
-//     }
-//     cout << "]" << endl;
-// }
+template <int N> 
+void print_array(T (&v)[N]) {
+    cout << "{";
+    for (int i = 0; i < N - 1; i++) {
+        cout << v[i] << " ";
+    }
+    cout << v[N - 1] << "}" << endl;
+}
+
+template <int N, int M> 
+void print_mat(T (&m)[N][M]) {
+    cout << "matrix of size: " << N << "x" << M << endl;
+    cout << "[";
+    for (int i = 0; i < N; i++) {
+          cout << "[";
+        for (int j = 0; j < M; j++) {
+            cout << m[i][j] << ", ";
+        }
+        cout << "]," << endl;
+    }
+    cout << "]" << endl;
+}
 
 template<int N>
 void push(T_s (&arr_s)[N], T (&arr_t)[N]){
@@ -400,14 +434,14 @@ void transpose(T (&mt)[M][N], const T (&m)[N][M]) {
     }
 }
 
-template <int N, int M> 
-void transpose(T (&mt)[M][N], const float (&m)[N][M]) {
-    for (int i = 0; i < N; i++) {
-        for (int j = 0; j < M; j++) {
-            mt[j][i] = m[i][j];
-        }
-    }
-}
+// template <int N, int M> 
+// void transpose(T (&mt)[M][N], const float (&m)[N][M]) {
+//     for (int i = 0; i < N; i++) {
+//         for (int j = 0; j < M; j++) {
+//             mt[j][i] = m[i][j];
+//         }
+//     }
+// }
 
 
 #endif
