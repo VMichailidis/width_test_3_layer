@@ -72,8 +72,7 @@ public:
 template<int N>
 void ReLu_ps<N>::backward(){
 	T dout_tmp[N], din_tmp[N];
-	#pragma HLS array_partition variable=in_tmp dim=1 complete
-	#pragma HLS array_partition variable=in_tmp dim=1 complete
+	#pragma HLS array_partition variable=din_tmp dim=1 complete
 	pop(din_tmp, *din);
 	for(int i = 0; i < N; i++){
 		#pragma HLS unroll

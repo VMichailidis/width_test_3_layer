@@ -7,10 +7,10 @@
 #include "hls_print.h"
 #include "include/Network.h"
 
-void CE_train_wrapper(T (&loss)[BATCH], T (&pred)[BATCH][OUT_DIM], T (&dout)[BATCH][IN_DIM], 
-                      Network<T, IN_DIM, L1_c, L2_c, OUT_DIM> &Net, Grad<T, IN_DIM, L1_c, L2_c, OUT_DIM> &Grad,
+void layer_net_3(T (&loss)[BATCH], T (&pred)[BATCH][OUT_DIM], T (&dout)[BATCH][IN_DIM], 
+                      Network<T, IN_DIM, L1_c, L2_c, OUT_DIM> &Net, 
+                      Grad<T, IN_DIM, L1_c, L2_c, OUT_DIM> &Grad,
 	                  T (&in)[BATCH][IN_DIM], int (&val)[BATCH]){
-	cout << "test0"<<endl;
     T_s in_tmp[IN_DIM], dout_tmp;
     hls::stream<int> val_tmp;
     T_s s1, rs1, d1[L1_c], rd1[L1_c];
@@ -18,20 +18,48 @@ void CE_train_wrapper(T (&loss)[BATCH], T (&pred)[BATCH][OUT_DIM], T (&dout)[BAT
     T_s s3, ps3[OUT_DIM], d3[OUT_DIM];
     T_s loss_tmp, pred_tmp[OUT_DIM], din[OUT_DIM];
     #pragma HLS stream variable=in_tmp depth=100 type=fifo 
-    #pragma HLS stream variable=loss_tmp depth=100 type=fifo 
-    #pragma HLS stream variable=pred_tmp depth=100 type=fifo 
     #pragma HLS stream variable=dout_tmp depth=100 type=fifo 
+    #pragma HLS stream variable=val_tmp depth=100 type=fifo 
+    
     #pragma HLS stream variable=s1 depth=100 type=fifo 
     #pragma HLS stream variable=rs1 depth=100 type=fifo 
     #pragma HLS stream variable=d1 depth=100 type=fifo 
     #pragma HLS stream variable=rd1 depth=100 type=fifo 
+    
     #pragma HLS stream variable=s2 depth=100 type=fifo 
+    #pragma HLS stream variable=rs2 depth=100 type=fifo 
+    #pragma HLS stream variable=d2 depth=100 type=fifo 
+    #pragma HLS stream variable=rd2 depth=100 type=fifo 
+    
+    #pragma HLS stream variable=s3 depth=100 type=fifo 
+    #pragma HLS stream variable=ps3 depth=100 type=fifo 
+    #pragma HLS stream variable=d3 depth=100 type=fifo 
+    
+    #pragma HLS stream variable=loss_tmp depth=100 type=fifo 
+    #pragma HLS stream variable=pred_tmp depth=100 type=fifo 
     #pragma HLS stream variable=din depth=100 type=fifo 
-    #pragma HLS stream variable=sdin depth=100 type=fifo 
-    #pragma HLS stream variable=val_tmp depth=100 type=fifo 
+    
+    #pragma HLS disaggregate variable=Net.l1
+    #pragma HLS disaggregate variable=Net.l2
+    #pragma HLS disaggregate variable=Net.l3
+    #pragma HLS disaggregate variable=Grad.l1
+    #pragma HLS disaggregate variable=Grad.l2
+    #pragma HLS disaggregate variable=Grad.l3
+    // #pragma HLS bind_storage variable=Net.l1.w type=RAM_1P impl=AUTO
+    // #pragma HLS bind_storage variable=Net.l1.b type=RAM_1P impl=AUTO
+    // #pragma HLS bind_storage variable=Net.l2.w type=RAM_1P impl=AUTO
+    // #pragma HLS bind_storage variable=Net.l2.b type=RAM_1P impl=AUTO
+    // #pragma HLS bind_storage variable=Net.l3.w type=RAM_1P impl=AUTO
+    // #pragma HLS bind_storage variable=Net.l3.b type=RAM_1P impl=AUTO
+    // #pragma HLS bind_storage variable=Grad.l1.w type=RAM_1P impl=AUTO
+    // #pragma HLS bind_storage variable=Grad.l1.b type=RAM_1P impl=AUTO
+    // #pragma HLS bind_storage variable=Grad.l2.w type=RAM_1P impl=AUTO
+    // #pragma HLS bind_storage variable=Grad.l2.b type=RAM_1P impl=AUTO
+    // #pragma HLS bind_storage variable=Grad.l3.w type=RAM_1P impl=AUTO
+    // #pragma HLS bind_storage variable=Grad.l3.b type=RAM_1P impl=AUTO
+
 
     // cout << "push inputs" << endl;
-    hls::print("test \n");
     push(in_tmp, in);
     for(int i = 0; i < BATCH; i++){val_tmp << val[i];}
     

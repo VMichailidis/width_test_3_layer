@@ -3,19 +3,29 @@
 #include "datatype.h"
 #include "Weights.h"
 #include "Network.h"
+#include <cmath>
 #include "../data/i_o.h"
 #include "../data/model_params.h"
 #include "../data/model_grads.h"
 
+// relative error = |m1-m2|/m2
+template<typename t1, typename t2, int N>
+float accuracy(t1 (&m_hw)[N], t2 (&m_sw)[N]);
+template<typename t1, typename t2>
+float accuracy(t1 m_hw, t2 m_sw);
+
+
+template<typename t, int N>
+float amplitude(t (&vec)[N]);
 // average error across an array
 template<typename t, int N>
-float avg_error(t (&m_hw)[N], float(&m_sw)[N]);
+float avg_acc(t (&m_hw)[N], float(&m_sw)[N]);
 template<typename t, int N, int M>
-float avg_error(t (&m_hw)[N][M], float (&m_sw)[N][M]);
+float avg_acc(t (&m_hw)[N][M], float (&m_sw)[N][M]);
 template<typename t, int IN, int OUT>
-void avg_error(Layer_err &err,Weights_Grad<t, IN, OUT> g_hw, Weights_Grad<float, IN, OUT> g_sw);
+void avg_acc(Layer_err &err,Weights_Grad<t, IN, OUT> &g_hw, Weights_Grad<float, IN, OUT> &g_sw);
 template<typename t, int IN, int L1, int L2, int OUT>
-void avg_error(Net_err &err, Grad<t, IN, L1, L2, OUT> g_hw, Grad<float, IN, L1, L2, OUT> g_sw);
+void avg_acc(Net_err &err, Grad<t, IN, L1, L2, OUT> &g_hw, Grad<float, IN, L1, L2, OUT> &g_sw);
 
 // Return Error when inputs differ by err 
 bool cmp(T &a, T &b, float err);
@@ -32,9 +42,11 @@ bool cmp(Weights_Grad<t, IN, OUT> g1, Weights_Grad<t, IN, OUT> g2, float err);
 template<int N>
 void copy (int (&out)[N], const int (&in)[N]);
 
-// relative error = |m1-m2|/m2
-template<typename t>
-float error(t &m_hw, float &m_sw);
+// Dynamic range of array
+template<typename t, int N>
+void dyn_range(t (&in)[N]);
+template<typename t, int N, int M>
+void dyn_range(t (&in)[N][M]);
 
 // load testbench data
 template<typename t, int IN, int L1, int L2, int OUT>
@@ -54,49 +66,81 @@ void max_arg(int (&out)[N], t (&in)[N][M]);
 
 // return relative max error |m1 - m2|/m2 
 template<typename t, int N>
-float max_err(t (&m_hw)[N], float (&m_sw)[N]);
+float min_acc(t (&m_hw)[N], float (&m_sw)[N]);
 template<typename t, int N, int M>
-float max_err(t (&m_hw)[N][M], float (&m_sw)[N][M]);
+float min_acc(t (&m_hw)[N][M], float (&m_sw)[N][M]);
 template<typename t, int IN, int OUT>
-void max_err(Layer_err &err, Weights_Grad<t, IN, OUT> &g1, Weights_Grad<float, IN, OUT> &g2);
+void min_acc(Layer_err &err, Weights_Grad<t, IN, OUT> &g1, Weights_Grad<float, IN, OUT> &g2);
 template<typename t, int IN, int L1, int L2, int OUT>
-void max_err(Net_err &err, Grad<t, IN, L1, L2, OUT> &g1, Grad<float, IN, L1, L2, OUT> &g2);
+void min_acc(Net_err &err, Grad<t, IN, L1, L2, OUT> &g1, Grad<float, IN, L1, L2, OUT> &g2);
 
 template<int N>
-float pred_err(int (&p_hw)[N], int (&p_sw)[N]);
+float pred_acc(int (&p_hw)[N], int (&p_sw)[N]);
+
+// print functions for debugging
+template <typename t, int N> 
+void print_array(const t (&v)[N]);
+template <typename t, int N, int M> 
+void print_mat(const t (&m)[N][M]);
+
+template<typename t1, typename t2, int N>
+float accuracy(t1 (&m_hw)[N], t2 (&m_sw)[N]){
+    // the normalized inner product of two vectors <v1, v2>/(||v1||*||v2||)
+    // In the case that either input has zero amplitude, 
+    // return the distance inverted value of the other amplitude
+    float dot_prod = 0;
+    for(int i = 0; i < N; i++){dot_prod+= float(m_hw[i])*float(m_sw[i]);}
+    float a_hw = amplitude(m_hw);
+    float a_sw = amplitude(m_sw);
+    float ret = a_sw*a_hw == 0 ? 1 - abs(a_hw) - abs(a_sw) : dot_prod/(a_hw*a_sw);
+    return ret;
+}
+template<typename t1, typename t2>
+float accuracy(t1 m_hw, t2 m_sw){
+    float acc = 0;
+    acc = (m_sw == 0) ? 1 - abs(float(m_hw)) : 1 - abs((float(m_hw) - float(m_sw))/float(m_sw));
+    return acc ;
+}
+template<typename t, int N>
+float amplitude(t (&vec)[N]){
+    float sum = 0;
+    for(int i = 0; i < N; i++){
+        sum += float(vec[i])*float(vec[i]);
+    }
+    return sqrt(sum);
+}
 
 template<typename t, int N>
-float avg_error(t (&m_hw)[N], float (&m_sw)[N]){
+float avg_acc(t (&m_hw)[N], float (&m_sw)[N]){
     float sum=0;
     for(int i = 0; i < N; i++){
-        sum += error(m_hw[i], m_sw[i]);
+        sum += accuracy(m_hw[i], m_sw[i]);
     }
     return sum/float(N);
 }
 
 
 template<typename t, int N, int M>
-float avg_error(t (&m_hw)[N][M], float (&m_sw)[N][M]){
+float avg_acc(t (&m_hw)[N][M], float (&m_sw)[N][M]){
+    //element wise application of error in vectors of matrix compares neurons of a layer 
     float sum=0;
     for(int i = 0; i < N; i++){
-        for(int j = 0; j < M; j++){
-            sum += error(m_hw[i][j], m_sw[i][j]);
-        }
+        sum += accuracy(m_hw[i], m_sw[i]);
     }
-    return sum/float(N*M);
+    return sum/float(N);
 }
 
 template<typename t, int IN, int OUT>
-void avg_error(Layer_err &err, Weights_Grad<t, IN, OUT> g_hw, Weights_Grad<float, IN, OUT> g_sw){
-    err.w = avg_error(g_hw.w, g_sw.w);
-    err.b = avg_error(g_hw.b, g_sw.b);
+void avg_acc(Layer_err &err, Weights_Grad<t, IN, OUT> &g_hw, Weights_Grad<float, IN, OUT> &g_sw){
+    err.w = avg_acc(g_hw.w, g_sw.w);
+    err.b = accuracy(g_hw.b, g_sw.b);
 }
 
 template<typename t, int IN, int L1, int L2, int OUT>
-void avg_error(Net_err &err, Grad<t, IN, L1, L2, OUT> g_hw, Grad<float, IN, L1, L2, OUT> g_sw){
-    avg_error(err.l1, g_hw.l1, g_sw.l1);
-    avg_error(err.l2, g_hw.l2, g_sw.l2);
-    avg_error(err.l3, g_hw.l3, g_sw.l3);
+void avg_acc(Net_err &err, Grad<t, IN, L1, L2, OUT> &g_hw, Grad<float, IN, L1, L2, OUT> &g_sw){
+    avg_acc(err.l1, g_hw.l1, g_sw.l1);
+    avg_acc(err.l2, g_hw.l2, g_sw.l2);
+    avg_acc(err.l3, g_hw.l3, g_sw.l3);
 }
 
 template<int N>
@@ -162,13 +206,31 @@ void copy (int (&out)[N], const int (&in)[N]){
     }
 }
 
-template<typename t>
-float error(t &m_hw, float &m_sw){
-    float tmp;
-    if(m_sw == 0){tmp = float(m_hw);}
-    else{tmp = abs((float(m_hw) - m_sw)/m_sw);}
-    return tmp;
+template<typename t, int N>
+void dyn_range(t &min, t &max, t (&in)[N]){
+    min = abs(in[0]);
+    max = abs(in[0]);
+    for(int i = 1; i < N; i++){
+        min = min < abs(in[i]) ? min : abs(in[i]);
+        max = max > abs(in[i]) ? max : abs(in[i]);
+    }
 }
+
+template<typename t, int N, int M>
+void dyn_range(t &min, t &max, t (&in)[N][M]){
+    min = abs(in[0][0]);
+    max = abs(in[0][0]);
+
+    for(int i = 0; i < N; i++){
+        for(int j = 0; j < M; j++){
+            min = min < abs(in[i][j]) ? min : abs(in[i][j]);
+            max = max > abs(in[i][j]) ? max : abs(in[i][j]);
+
+        }
+    }
+}
+
+
 
 template<typename t,int IN, int L1, int L2, int OUT>
 void load_grad(Grad<t, IN, L1, L2, OUT> &grad){
@@ -220,51 +282,75 @@ void max_arg(int (&out)[N], t (&in)[N][M]){
 }
 
 template<typename t, int N>
-float max_err(t (&m_hw)[N], float (&m_sw)[N]){
-    float err = 0;
+float min_acc(t (&m_hw)[N], float (&m_sw)[N]){
+    float ret = accuracy(m_hw[0], m_sw[0]);
     float tmp = 0;
-    for(int i = 0; i < N; i++){
-        tmp = error(m_hw[i], m_sw[i]);
-        err = (tmp > err) ? tmp : err;
-    }
-    return err;
+    for(int i = 1; i < N; i++){
+        tmp = accuracy(m_hw[i], m_sw[i]);
+        ret = (ret < tmp) ? ret : tmp;
+    }    
+    return ret;
 }
 
 template<typename t, int N, int M>
-float max_err(t (&m_hw)[N][M], float (&m_sw)[N][M]){
-    float err = 0;
+float min_acc(t (&m_hw)[N][M], float (&m_sw)[N][M]){
+    //element wise application of error in vectors of matrix compares neurons of a layer 
+    float ret = accuracy(m_hw[0], m_sw[0]);
     float tmp = 0;
-    for(int i = 0; i < N; i++){
-        for(int j = 0; j < M; j++){
-            tmp = error(m_hw[i][j], m_sw[i][j]);
-            err = (tmp > err) ? tmp : err;
-        }
-    }
-    return err;
+    for(int i = 1; i < N; i++){
+        tmp = accuracy(m_hw[i], m_sw[i]);
+        ret = (ret < tmp) ? ret : tmp;
+    }    
+    return ret;
 }
 
 
 template<typename t, int IN, int OUT>
-void max_err(Layer_err &err, Weights_Grad<t, IN, OUT> &g_hw, Weights_Grad<float, IN, OUT> &g_sw){
-    err.w = max_err(g_hw.w, g_sw.w);
-    err.b = max_err(g_hw.b, g_sw.b);
+void min_acc(Layer_err &err, Weights_Grad<t, IN, OUT> &g_hw, Weights_Grad<float, IN, OUT> &g_sw){
+    err.w = min_acc(g_hw.w, g_sw.w);
+    err.b = accuracy(g_hw.b, g_sw.b);
 }
 
 template<typename t, int IN, int L1, int L2, int OUT>
-void max_err(Net_err &err, Grad<t, IN, L1, L2, OUT> &g_hw, Grad<float, IN, L1, L2, OUT> &g_sw){
-    max_err(err.l1, g_hw.l1, g_sw.l1);
-    max_err(err.l2, g_hw.l2, g_sw.l2);
-    max_err(err.l3, g_hw.l3, g_sw.l3);
+void min_acc(Net_err &err, Grad<t, IN, L1, L2, OUT> &g_hw, Grad<float, IN, L1, L2, OUT> &g_sw){
+    min_acc(err.l1, g_hw.l1, g_sw.l1);
+    min_acc(err.l2, g_hw.l2, g_sw.l2);
+    min_acc(err.l3, g_hw.l3, g_sw.l3);
 }
 
 template<int N>
-float pred_err(int (&p_hw)[N], int (&p_sw)[N]){
-    //returns error rate
+float pred_acc(int (&p_hw)[N], int (&p_sw)[N]){
+    //returns accuracy
     float sum = 0;
     for(int i = 0; i < N; i++){
-        sum += (p_hw[i] == p_sw[i]) ? 0.0 : 1.0; // count errors in inputs
+        sum += (p_hw[i] == p_sw[i]) ? 1.0 : 0.0; // count errors in inputs
     }
     return sum/float(N);
 
 }
+
+template <typename t, int N> 
+void print_array(t (&v)[N]) {
+    cout << "{";
+    for (int i = 0; i < N - 1; i++) {
+        cout << v[i] << " ";
+    }
+    cout << v[N - 1] << "}" << endl;
+}
+
+template <typename t, int N, int M> 
+void print_mat(t (&m)[N][M]) {
+    cout << "matrix of size: " << N << "x" << M << endl;
+    cout << "[";
+    for (int i = 0; i < N; i++) {
+          cout << "[";
+        for (int j = 0; j < M; j++){ 
+            cout << m[i][j] << ", ";
+        }
+        cout << "]," << endl;
+    }
+    cout << "]" << endl;
+}
+
+
 #endif

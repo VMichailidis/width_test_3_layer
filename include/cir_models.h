@@ -8,46 +8,46 @@
 #include "hls_math.h"
 
 
-template <int IN, int L1, int L2, int OUT>
-void Backprop_model(Grad<IN, L1, L2, OUT> &grad,Network<IN, L1, L2, OUT> &net, T (&in)[IN], T(&train)[OUT]);
+template <typename t, int IN, int L1, int L2, int OUT>
+void Backprop_model(Grad<t, IN, L1, L2, OUT> &grad,Network<t, IN, L1, L2, OUT> &net, T (&in)[IN], T(&train)[OUT]);
 
-template<int N>
+template<typename t, int N>
 void CE(T (&out), int(&val)[N], T(&pred)[N]);
 
-template <int IN, int L1, int L2, int OUT>
-void Forward_Net_model(T (&out)[OUT], Network<IN, L1, L2, OUT> &net, T (&in)[IN]);
+template <typename t, int IN, int L1, int L2, int OUT>
+void Forward_Net_model(T (&out)[OUT], Network<t, IN, L1, L2, OUT> &net, T (&in)[IN]);
 
-template<int IN, int L, int OUT>
+template<typename t, int IN, int L, int OUT>
 void Lin_train_model(T (&out)[OUT], T (&dout)[IN], 
-                   Weights_Grad<IN, L> &G1, Weights_Grad<L, OUT> &G2,
-	               Weights<IN, L> &L1, Weights<L, OUT> &L2,
+                   Weights_Grad<t, IN, L> &G1, Weights_Grad<t, L, OUT> &G2,
+	               Weights<t, IN, L> &L1, Weights<t, L, OUT> &L2,
 	               T (&in)[IN], T (&din)[OUT]);
 
-template<int IN, int OUT>
-void Lin_grad_model(T (&dout)[IN], Weights_Grad<IN, OUT> &G, 
+template<typename t, int IN, int OUT>
+void Lin_grad_model(T (&dout)[IN], Weights_Grad<t, IN, OUT> &G, 
                     T (&w)[OUT][IN], 
                     T(&in)[IN], T (&din)[OUT]);
 
-template <int IN, int OUT>
+template <typename t, int IN, int OUT>
 void Lin_model(T (&out)[OUT], T (&w)[OUT][IN], T (&b)[OUT], T (&in)[IN]);
 
-template<int IN, int OUT>
-void Lin_train_model(T (&out)[OUT], T (&dout)[IN], Weights_Grad<IN, OUT> &G, 
-               Weights<IN, OUT> &L,
+template<typename t, int IN, int OUT>
+void Lin_train_model(T (&out)[OUT], T (&dout)[IN], Weights_Grad<t, IN, OUT> &G, 
+               Weights<t, IN, OUT> &L,
                T (&in)[IN], T (&din)[OUT]);
 
 
-template<int N>
+template<typename t, int N>
 void softmax(T (&out)[N], T (&in)[N]);
 
-template <int IN, int L1, int L2, int OUT>
-void Backprop_model(Grad<IN, L1, L2, OUT> &grad,
-                    Network<IN, L1, L2, OUT> &net, 
+template <typename t, int IN, int L1, int L2, int OUT>
+void Backprop_model(Grad<t, IN, L1, L2, OUT> &grad,
+                    Network<t, IN, L1, L2, OUT> &net, 
                     T (&in)[IN], T(&train)[OUT]) {
 /*
 * IN -Lin1-> s1 -ReLu-> Rs1 -Lin2-> s2 -ReLu-> Rs2 -Lin3-> s3 -softmax-> s4
 */
-    Grad<IN, L1, L2, OUT> grad_temp;
+    Grad<t, IN, L1, L2, OUT> grad_temp;
     
     T s1[L1], Rs1[L1];
     T s2[L2], Rs2[L2];
@@ -91,13 +91,13 @@ void Backprop_model(Grad<IN, L1, L2, OUT> &grad,
     add(grad, grad, grad_temp);
 }
 
-template<int N>
+template<typename t, int N>
 void CE(T (&out), int(&val), T(&pred)[N]){
 	out = -hls::log(pred[val]);
 }
 
-template <int IN, int L1, int L2, int OUT>
-void Forward_Net_model(T (&out)[OUT], Network<IN, L1, L2, OUT> &net,
+template <typename t, int IN, int L1, int L2, int OUT>
+void Forward_Net_model(T (&out)[OUT], Network<t, IN, L1, L2, OUT> &net,
                        T (&in)[IN]) {
     T s1[L1], s2[L2], s3[OUT];
     T Rs1[L1], Rs2[L2];
@@ -112,8 +112,8 @@ void Forward_Net_model(T (&out)[OUT], Network<IN, L1, L2, OUT> &net,
     // softmax(out, s3);
 }
 
-template<int IN, int OUT>
-void Lin_grad_model(T (&dout)[IN], Weights_Grad<IN, OUT> &G, 
+template<typename t, int IN, int OUT>
+void Lin_grad_model(T (&dout)[IN], Weights_Grad<t, IN, OUT> &G, 
                     T (&w)[OUT][IN], 
                     T(&in)[IN], T (&din)[OUT]){
     outer(G.w, din, in);
@@ -121,7 +121,7 @@ void Lin_grad_model(T (&dout)[IN], Weights_Grad<IN, OUT> &G,
     cdot(dout, w, din);
 }
 
-template <int IN, int OUT>
+template <typename t, int IN, int OUT>
 void Lin_model(T (&out)[OUT], T (&w)[OUT][IN], T (&b)[OUT], T (&in)[IN]) {
     for (int i = 0; i < OUT; i++) {
         cdot(out[i], w[i], in);
@@ -129,18 +129,18 @@ void Lin_model(T (&out)[OUT], T (&w)[OUT][IN], T (&b)[OUT], T (&in)[IN]) {
     }
 }
 
-template<int IN, int OUT>
-void Lin_train_model(T (&out)[OUT], T (&dout)[IN], Weights_Grad<IN, OUT> &G, 
-               Weights<IN, OUT> &L,
+template<typename t, int IN, int OUT>
+void Lin_train_model(T (&out)[OUT], T (&dout)[IN], Weights_Grad<t, IN, OUT> &G, 
+               Weights<t, IN, OUT> &L,
                T (&in)[IN], T (&din)[OUT]){
     Lin_grad_model(dout, G, L.w, in, din);
     Lin_model(out, L.w, L.b, in);
 }
 
-template<int IN, int L, int OUT>
+template<typename t, int IN, int L, int OUT>
 void Lin_train_model(T (&out)[OUT], T (&dout)[IN], 
-                   Weights_Grad<IN, L> &G1, Weights_Grad<L, OUT> &G2,
-	               Weights<IN, L> &L1, Weights<L, OUT> &L2,
+                   Weights_Grad<t, IN, L> &G1, Weights_Grad<t, L, OUT> &G2,
+	               Weights<t, IN, L> &L1, Weights<t, L, OUT> &L2,
 	               T (&in)[IN], T (&din)[OUT]){
     T d1[L], s1[L];
     T rd1[L], rs1[L];
@@ -159,10 +159,10 @@ void Lin_train_model(T (&out)[OUT], T (&dout)[IN],
 
 }
 
-template<int IN, int L,int OUT>
+template<typename t, int IN, int L,int OUT>
 void L_L_CE_model(T &loss, T (&pred)[OUT], T(&dout)[IN], 
-                  Weights_Grad<IN, L> &G1, Weights_Grad<L, OUT> &G2,
-	              Weights<IN, L> &L1, Weights<L, OUT> &L2,
+                  Weights_Grad<t, IN, L> &G1, Weights_Grad<t, L, OUT> &G2,
+	              Weights<t, IN, L> &L1, Weights<t, L, OUT> &L2,
                   T(&in)[IN], int (&val)){
 
     //inference
@@ -186,7 +186,7 @@ void L_L_CE_model(T &loss, T (&pred)[OUT], T(&dout)[IN],
 
 }
 
-template<int N>
+template<typename t, int N>
 void softmax(T (&out)[N], T (&in)[N]){
     // cout << "softmax" << endl;
     // in order to ensure numerical stability we subtract the maximum term from the input vector

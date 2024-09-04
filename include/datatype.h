@@ -4,7 +4,7 @@
 #include <ap_fixed.h>
 #include "hls_stream.h"
 #include "hls_streamofblocks.h"
-typedef ap_fixed<32,4> T;
+typedef ap_fixed<32,16> T;
 // typedef float T;
 typedef hls::stream<T> T_s;
 #define DEPTH 10
@@ -63,12 +63,6 @@ void pop(t (&arr_t)[B][N], hls::stream<t> (&arr_s)[N]);
 template<typename t, int B, int N>
 void pop(t (&arr_t)[B][N], hls::stream<t> (&arr_s));
 
-
-// print functions for debugging
-template <int N> 
-void print_array(const T (&v)[N]);
-template <int N, int M> 
-void print_mat(const T (&m)[N][M]);
 
 // pushing and fitting formated arrays and array of arrays
 template<typename t, int N>
@@ -224,9 +218,9 @@ void pop (t &x_t, hls::stream<t> &x_s){
 
 template<typename t, int N>
 void pop(t (&arr_t)[N], hls::stream<t> (&arr_s)[N]){
-	// #pragma HLS array_partition variable=arr_t dim=1 complete
+	#pragma HLS array_partition variable=arr_t dim=1 complete
 	POP_ARR:for(int i = 0; i<N; i++){
-		// #pragma HLS unroll
+		#pragma HLS unroll
 		pop(arr_t[i], arr_s[i]);
 	}
 }
@@ -253,29 +247,6 @@ void pop(t (&arr_t)[B][N], hls::stream<t> (&arr_s)){
 			pop(arr_t[i][j], arr_s);
 		}
 	}
-}
-
-template <int N> 
-void print_array(T (&v)[N]) {
-    cout << "{";
-    for (int i = 0; i < N - 1; i++) {
-        cout << v[i] << " ";
-    }
-    cout << v[N - 1] << "}" << endl;
-}
-
-template <int N, int M> 
-void print_mat(T (&m)[N][M]) {
-    cout << "matrix of size: " << N << "x" << M << endl;
-    cout << "[";
-    for (int i = 0; i < N; i++) {
-          cout << "[";
-        for (int j = 0; j < M; j++){ 
-            cout << m[i][j] << ", ";
-        }
-        cout << "]," << endl;
-    }
-    cout << "]" << endl;
 }
 
 template<typename t, int N>
