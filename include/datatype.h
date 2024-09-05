@@ -4,7 +4,8 @@
 #include <ap_fixed.h>
 #include "hls_stream.h"
 #include "hls_streamofblocks.h"
-typedef ap_fixed<32,16> T;
+#include "fixed_params.h"
+typedef ap_fixed<LEN,FRAC> T;
 // typedef float T;
 typedef hls::stream<T> T_s;
 #define DEPTH 10

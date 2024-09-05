@@ -1,8 +1,7 @@
 #include "include/params.h"
 #include "include/test_helpers.h"
 #include "data/model_params.h"
-#include "include/scratchpad.h"
-#define RAND_GEN 10
+#include <fstream>
 
 template <int B, int N, int M>
 void copy_batch(T (&m1)[N][M], const T (&m2)[B][M]);
@@ -62,9 +61,11 @@ bool test_ce() {
 
     cout << "circuit" << endl;
     layer_net_3(loss_hw, pred_hw, dout_hw, net, grad_hw, in, val_sw); 
-
-    cout << "min pred accuracy: " << min_acc(pred_hw, pred_sw) << endl;
-    cout << "avg pred accuracy: " << avg_acc(pred_hw, pred_sw) << endl;
+    
+    float min_pred_acc = min_acc(pred_hw, pred_sw);
+    float avg_pred_acc = avg_acc(pred_hw, pred_sw);
+    cout << "min pred accuracy: " << min_pred_acc << endl;
+    cout << "avg pred accuracy: " << avg_pred_acc << endl;
     
     min_acc(min_grad_acc, grad_hw, grad_sw);
     cout << "Min accuracy per layer:"<< endl;
@@ -79,19 +80,27 @@ bool test_ce() {
     cout << "Layer3 (w/b): "<< grad_acc.l3.w << "\t " << grad_acc.l3.b <<endl;
     
     max_arg(val_hw, pred_hw);
+    float prediction_phase = pred_acc(val_hw, val_sw);
+    cout << "Prediction Accuracy: " << prediction_phase << endl;
+    string filename = "/mnt/nix-disk/home/basil/Documents/School/Thesis/Circuits/FF_HLS/width_test/3_layer/src/accuracy.csv";
+    ofstream fp (filename, std::ios::out | std::ios::app);// print results 
+    //
+    //Word Length, Fractional Bits, Prediction phase, avg Prediction accuracy, min Prediction accuracy, avg w1, avg b1, avg w2, avg b2, avg w2, avg b3, min w1, min b1, min w2, min b2, min w2, min b3
+    if(!(fp.is_open())){cout << "error opening file"<<endl;}
+    fp << LEN << ", ";
+    fp << FRAC << ", ";
+    fp <<prediction_phase << ", ";
+    fp <<avg_pred_acc << ", ";
+    fp << min_pred_acc << ", ";
 
-    cout << "Prediction Accuracy: " << pred_acc(val_hw, val_sw) << endl;
-    cout << "SW: " << endl;
-    print_array(val_sw);
-    cout << "HW: " << endl;
-    print_array(val_hw);
-    float w_acc;
-    float w_t[L2_c][L1_c];
-    copy(w_t, net.l2.w);
-    w_acc = min_acc(w_t, net_sw.l2.w);
-    cout << "copy accuracy: " << w_acc << endl;
-    
+    fp << grad_acc.l1.w << ", " << grad_acc.l1.b << ", ";
+    fp << grad_acc.l2.w << ", " << grad_acc.l2.b << ", ";
+    fp << grad_acc.l3.w << ", " << grad_acc.l3.b << ", ";
+    fp << min_grad_acc.l1.w << ", " << min_grad_acc.l1.b <<", ";
+    fp << min_grad_acc.l2.w << ", " << min_grad_acc.l2.b <<", ";
+    fp << min_grad_acc.l3.w << ", " << min_grad_acc.l3.b <<"\n";
 
+    fp.close();
     return ret;
 
 }
@@ -106,7 +115,7 @@ int main(int argc, char **argv){
     // copy(arr_1, arr_2);
     // // copy()
     // print_array(arr_1[5]);
-    // print_array(arr_1[4]);
+    // print_array(arr_1[4])
     // cout << accuracy(arr_1[5], arr_2[4]) <<endl;
     // cout << avg_acc(arr_1, arr_2)<< endl;
     // cout << min_acc(arr_1, arr_2) << endl;
